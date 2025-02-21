@@ -131,7 +131,7 @@ export function Camera() {
           }
 
           // 合成した画像を保存
-          setImgSrc(canvas.toDataURL("image/jpeg"));
+          setImgSrc(canvas.toDataURL("image/png"));
         };
         captureImg.src = imageSrc;
       };
@@ -150,7 +150,7 @@ export function Camera() {
 
     const link = document.createElement("a");
     link.href = imgSrc;
-    link.download = `xg-camera-${new Date().toISOString()}.jpg`;
+    link.download = `xg-camera-${new Date().toISOString()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -162,7 +162,7 @@ export function Camera() {
     try {
       const blob = await (await fetch(imgSrc)).blob();
       await navigator.share({
-        files: [new File([blob], "xg-camera.jpg", { type: "image/jpeg" })],
+        files: [new File([blob], "xg-camera.png", { type: "image/png" })],
       });
     } catch (error) {
       console.error("Error sharing:", error);
@@ -200,7 +200,7 @@ export function Camera() {
               <Webcam
                 ref={webcamRef}
                 audio={false}
-                screenshotFormat="image/jpeg"
+                screenshotFormat="image/png"
                 videoConstraints={CAMERA_CONSTRAINTS}
                 className="absolute inset-0 w-full h-full object-cover"
                 onUserMedia={handleUserMedia}
@@ -214,7 +214,7 @@ export function Camera() {
                   bottom: `${memberPosition.y}px`,
                   right: `${memberPosition.x}px`,
                 }}
-                onMouseDown={(e) => {
+                onMouseDown={() => {
                   setIsDragging(true);
                 }}
                 onMouseMove={(e) => {
@@ -234,7 +234,7 @@ export function Camera() {
                 }}
                 onMouseUp={() => setIsDragging(false)}
                 onMouseLeave={() => setIsDragging(false)}
-                onTouchStart={(e) => {
+                onTouchStart={() => {
                   setIsDragging(true);
                 }}
                 onTouchMove={(e) => {
@@ -306,7 +306,7 @@ export function Camera() {
           <div className="flex gap-4">
             <button
               onClick={retake}
-              className="px-4 py-2 bg-gray-200 rounded-lg"
+              className="px-4 py-2 bg-gray-400 rounded-lg"
             >
               撮り直し
             </button>
