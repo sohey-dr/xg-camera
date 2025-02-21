@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
-import Webcam from "react-webcam";
+import { Camera } from "react-camera-pro";
 
 const MEMBERS = [
   { id: "jurin", name: "JURIN", image: "/images/member/jurin.png" },
@@ -13,79 +13,27 @@ const MEMBERS = [
   { id: "cocona", name: "COCONA", image: "/images/member/cocona.png" },
 ];
 
-const CAMERA_CONSTRAINTS = {
-  width: { min: 320, ideal: 720, max: 1280 },
-  height: { min: 240, ideal: 1280, max: 1920 },
-  facingMode: { ideal: "environment" },
-  aspectRatio: { ideal: 9 / 16 },
-};
-
-export function Camera() {
-  const webcamRef = useRef<Webcam>(null);
+export function CameraComponent() {
+  const cameraRef = useRef<any>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCameraReady, setIsCameraReady] = useState(false);
 
-  // カメラの準備が完了したら状態を更新
   useEffect(() => {
-    const checkCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        stream.getTracks().forEach((track) => track.stop());
-        setIsCameraReady(true);
-      } catch (err) {
-        console.error("Camera check failed:", err);
-        setError("カメラの初期化に失敗しました。");
-      }
-    };
-
-    checkCamera();
+    // Camera will automatically initialize
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleUserMedia = () => {
-    setIsLoading(false);
-    setError(null);
-  };
-
-  const handleUserMediaError = (error: string | DOMException) => {
-    console.error("Camera error:", error);
-    setIsLoading(false);
-    if (
-      error === "Permission denied" ||
-      (error instanceof DOMException && error.name === "NotAllowedError")
-    ) {
-      setError(
-        "カメラへのアクセスが拒否されました。ブラウザの設定でカメラへのアクセスを許可してください。"
-      );
-    } else if (
-      error === "Requested device not found" ||
-      (error instanceof DOMException && error.name === "NotFoundError")
-    ) {
-      setError(
-        "カメラが見つかりませんでした。デバイスにカメラが接続されているか確認してください。"
-      );
-    } else if (
-      error instanceof DOMException &&
-      error.name === "NotReadableError"
-    ) {
-      setError(
-        "カメラにアクセスできません。他のアプリがカメラを使用している可能性があります。"
-      );
-    } else {
-      setError(`カメラの起動に失敗しました: ${error}`);
-    }
-  };
-
   const capture = useCallback(() => {
-    const webcam = webcamRef.current;
-    if (!webcam) return;
+    const camera = cameraRef.current;
+    if (!camera) return;
 
     // キャプチャ画像を取得
-    const imageSrc = webcam.getScreenshot();
+    const imageSrc = camera.takePhoto();
     if (!imageSrc) return;
 
     // メンバー画像を合成
@@ -124,7 +72,7 @@ export function Camera() {
     } else {
       setImgSrc(imageSrc);
     }
-  }, [webcamRef, selectedMember]);
+  }, [selectedMember]);
 
   const retake = () => {
     setImgSrc(null);
@@ -181,17 +129,20 @@ export function Camera() {
       {!imgSrc ? (
         <>
           <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden">
-            {isCameraReady && (
-              <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/png"
-                videoConstraints={CAMERA_CONSTRAINTS}
-                className="absolute inset-0 w-full h-full object-cover"
-                onUserMedia={handleUserMedia}
-                onUserMediaError={handleUserMediaError}
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <Camera
+                ref={cameraRef}
+                numberOfCamerasCallback={(i: number) => {}}
+                facingMode="environment"
+                aspectRatio={9/16}
+                errorMessages={{
+                  noCameraAccessible: "カメラにアクセスできません",
+                  permissionDenied: "カメラへのアクセスが拒否されました",
+                  switchCamera: "カメラを切り替えられません",
+                  canvas: "キャンバスがサポートされていません",
+                }}
               />
-            )}
+            </div>
             {selectedMember && (
               <div className="absolute right-[5%] top-1/2 -translate-y-1/2 w-1/4 flex items-center justify-center">
                 <img
