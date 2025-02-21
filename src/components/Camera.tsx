@@ -24,8 +24,6 @@ export function Camera() {
   const webcamRef = useRef<Webcam>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
-  const [memberPosition, setMemberPosition] = useState({ x: 16, y: 112 });
-  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -104,31 +102,18 @@ export function Camera() {
           canvas.height = captureImg.height;
           ctx?.drawImage(captureImg, 0, 0);
 
-          // メンバー画像のアスペクト比を維持しながら配置（サイズを20%に）
-          const maxWidth = canvas.width * 0.2;
-          const maxHeight = canvas.height * 0.2;
+          // メンバー画像のアスペクト比を維持しながら配置（サイズを25%に）
+          const maxWidth = canvas.width * 0.25;
+          const maxHeight = canvas.height * 0.25;
           const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
           const memberWidth = img.width * scale;
           const memberHeight = img.height * scale;
-          // プレビューと同じ位置に配置
-          const containerRect =
-            webcamRef.current?.video?.parentElement?.getBoundingClientRect();
-          if (containerRect) {
-            const scaleX = canvas.width / containerRect.width;
-            const scaleY = canvas.height / containerRect.height;
-            const x =
-              containerRect.width - memberPosition.x - memberWidth / scaleX;
-            const y =
-              containerRect.height - memberPosition.y - memberHeight / scaleY;
 
-            ctx?.drawImage(
-              img,
-              x * scaleX,
-              y * scaleY,
-              memberWidth,
-              memberHeight
-            );
-          }
+          // 画像を右側中央に配置
+          const x = canvas.width - memberWidth - canvas.width * 0.05; // 右端から5%の位置
+          const y = (canvas.height - memberHeight) / 2; // 垂直方向の中央
+
+          ctx?.drawImage(img, x, y, memberWidth, memberHeight);
 
           // 合成した画像を保存
           setImgSrc(canvas.toDataURL("image/png"));
@@ -139,7 +124,7 @@ export function Camera() {
     } else {
       setImgSrc(imageSrc);
     }
-  }, [webcamRef, selectedMember, memberPosition]);
+  }, [webcamRef, selectedMember]);
 
   const retake = () => {
     setImgSrc(null);
@@ -208,52 +193,7 @@ export function Camera() {
               />
             )}
             {selectedMember && (
-              <div
-                className="absolute w-1/5 h-1/5 flex items-center justify-center cursor-move"
-                style={{
-                  bottom: `${memberPosition.y}px`,
-                  right: `${memberPosition.x}px`,
-                }}
-                onMouseDown={() => {
-                  setIsDragging(true);
-                }}
-                onMouseMove={(e) => {
-                  if (isDragging) {
-                    const rect =
-                      e.currentTarget.parentElement?.getBoundingClientRect();
-                    if (rect) {
-                      const x = rect.right - e.clientX;
-                      const y = rect.bottom - e.clientY;
-                      // 下端の制限を設定（最低位置を150pxに）
-                      setMemberPosition({
-                        x: Math.max(0, x),
-                        y: Math.max(150, y),
-                      });
-                    }
-                  }
-                }}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
-                onTouchStart={() => {
-                  setIsDragging(true);
-                }}
-                onTouchMove={(e) => {
-                  if (isDragging && e.touches[0]) {
-                    const rect =
-                      e.currentTarget.parentElement?.getBoundingClientRect();
-                    if (rect) {
-                      const x = rect.right - e.touches[0].clientX;
-                      const y = rect.bottom - e.touches[0].clientY;
-                      // タッチ操作でも同じ制限を適用
-                      setMemberPosition({
-                        x: Math.max(0, x),
-                        y: Math.max(150, y),
-                      });
-                    }
-                  }
-                }}
-                onTouchEnd={() => setIsDragging(false)}
-              >
+              <div className="absolute right-[5%] top-1/2 -translate-y-1/2 w-1/4 flex items-center justify-center">
                 <img
                   src={MEMBERS.find((m) => m.id === selectedMember)?.image}
                   alt="Selected member"
@@ -306,7 +246,7 @@ export function Camera() {
           <div className="flex gap-4">
             <button
               onClick={retake}
-              className="px-4 py-2 bg-gray-400 rounded-lg"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg"
             >
               撮り直し
             </button>
