@@ -15,12 +15,26 @@ const MEMBERS = [
 
 export function CameraComponent() {
   const cameraRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const memberImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // プリロードキャンバスの初期化
+    canvasRef.current = document.createElement("canvas");
+
+    // メンバー画像のプリロード
+    MEMBERS.forEach((member) => {
+      const img = new Image();
+      img.src = member.image;
+      img.onload = () => {
+        memberImagesRef.current.set(member.id, img);
+      };
+    });
+
     // Camera will automatically initialize
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -38,37 +52,44 @@ export function CameraComponent() {
 
     // メンバー画像を合成
     if (selectedMember) {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
 
-      img.onload = () => {
-        // キャプチャ画像をキャンバスに描画
-        const captureImg = new Image();
-        captureImg.onload = () => {
-          canvas.width = captureImg.width;
-          canvas.height = captureImg.height;
-          ctx?.drawImage(captureImg, 0, 0);
+      const captureImg = new Image();
+      captureImg.onload = () => {
+        // キャンバスのサイズを設定
+        canvas.width = captureImg.width;
+        canvas.height = captureImg.height;
 
+        // キャプチャ画像を描画
+        ctx.drawImage(captureImg, 0, 0);
+
+        // プリロード済みのメンバー画像を取得
+        const memberImg = memberImagesRef.current.get(selectedMember);
+        if (memberImg) {
           // メンバー画像のアスペクト比を維持しながら配置（サイズを25%に）
           const maxWidth = canvas.width * 0.25;
           const maxHeight = canvas.height * 0.25;
-          const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
-          const memberWidth = img.width * scale;
-          const memberHeight = img.height * scale;
+          const scale = Math.min(
+            maxWidth / memberImg.width,
+            maxHeight / memberImg.height
+          );
+          const memberWidth = memberImg.width * scale;
+          const memberHeight = memberImg.height * scale;
 
-          // 画像を右側中央に配置
+          // 画像を右側中央に配置（プレビューと同じ位置）
           const x = canvas.width - memberWidth - canvas.width * 0.05; // 右端から5%の位置
           const y = (canvas.height - memberHeight) / 2; // 垂直方向の中央
 
-          ctx?.drawImage(img, x, y, memberWidth, memberHeight);
+          // プリロード済みのメンバー画像を描画
+          ctx.drawImage(memberImg, x, y, memberWidth, memberHeight);
+        }
 
-          // 合成した画像を保存
-          setImgSrc(canvas.toDataURL("image/png"));
-        };
-        captureImg.src = imageSrc;
+        // 合成した画像を保存
+        setImgSrc(canvas.toDataURL("image/png"));
       };
-      img.src = MEMBERS.find((m) => m.id === selectedMember)?.image || "";
+      captureImg.src = imageSrc;
     } else {
       setImgSrc(imageSrc);
     }
@@ -129,12 +150,14 @@ export function CameraComponent() {
       {!imgSrc ? (
         <>
           <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden">
-            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <div
+              style={{ width: "100%", height: "100%", position: "relative" }}
+            >
               <Camera
                 ref={cameraRef}
                 numberOfCamerasCallback={(i: number) => {}}
                 facingMode="environment"
-                aspectRatio={9/16}
+                aspectRatio={9 / 16}
                 errorMessages={{
                   noCameraAccessible: "カメラにアクセスできません",
                   permissionDenied: "カメラへのアクセスが拒否されました",
