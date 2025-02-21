@@ -5,6 +5,7 @@ import { Camera } from "react-camera-pro";
 import html2canvas from "html2canvas";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faRedo, faShare } from "@fortawesome/free-solid-svg-icons";
+import FixImages from "./FixImages";
 
 export function CameraComponent() {
   const cameraRef = useRef<any>(null);
@@ -130,25 +131,10 @@ export function CameraComponent() {
                 }}
               />
             </div>
-            <div
-              className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
-            >
-              <img
-                src="/images/live_member.png"
-                alt="Live member"
-                className="w-4/5 mb-4"
-                style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
-              />
-              <img
-                src="/images/live_logo.png"
-                alt="Live logo"
-                className="w-3/5 mb-8"
-                style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
-              />
-            </div>
+            <FixImages />
             <button
               onClick={capture}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-800 shadow-lg"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-4 border-white shadow-lg"
               aria-label="Take photo"
             />
           </div>
@@ -170,22 +156,7 @@ export function CameraComponent() {
                     alt="Capture"
                     className="w-full h-full object-cover"
                   />
-                  <div
-                    className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
-                  >
-                    <img
-                      src="/images/live_member.png"
-                      alt="Live member"
-                      className="w-4/5 mb-4"
-                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
-                    />
-                    <img
-                      src="/images/live_logo.png"
-                      alt="Live logo"
-                      className="w-3/5 mb-8"
-                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
-                    />
-                  </div>
+                  <FixImages />
                 </>
               )}
             </div>
@@ -193,37 +164,37 @@ export function CameraComponent() {
         </>
       ) : (
         <>
-          <div className="relative w-full h-full bg-black overflow-hidden">
+          <div className="fixed inset-0 z-50">
             <img
               src={imgSrc}
               alt="Captured photo"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
-          </div>
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-6">
-            <button
-              onClick={retake}
-              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
-            >
-              <FontAwesomeIcon icon={faRedo} className="text-2xl mb-1" />
-              <span className="text-sm">撮り直し</span>
-            </button>
-            <button
-              onClick={download}
-              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
-            >
-              <FontAwesomeIcon icon={faDownload} className="text-2xl mb-1" />
-              <span className="text-sm">保存</span>
-            </button>
-            {"share" in navigator && (
-              <button
-                onClick={share}
-                className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
-              >
-                <FontAwesomeIcon icon={faShare} className="text-2xl mb-1" />
-                <span className="text-sm">シェア</span>
-              </button>
-            )}
+              <div className="fixed inset-0 flex items-center justify-center">
+                <div className="mt-48">
+              <div className="bg-white rounded-lg shadow-xl mt-96 p-2">
+                <div className="flex justify-center gap-6">
+                  <FontAwesomeIcon
+                    className="text-black"
+                    icon={faRedo}
+                    onClick={retake}
+                  />
+                  <FontAwesomeIcon
+                    className="text-black"
+                    onClick={download}
+                    icon={faDownload}
+                  />
+                  {"share" in navigator && (
+                    <FontAwesomeIcon
+                      className="text-black"
+                      onClick={share}
+                      icon={faShare}
+                    />
+                  )}
+                </div>
+                  </div>
+                  </div>
+            </div>
           </div>
         </>
       )}
