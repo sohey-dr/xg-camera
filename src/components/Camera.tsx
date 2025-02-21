@@ -4,10 +4,16 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { FilterCanvas } from './FilterCanvas';
 
-const CAPTURE_OPTIONS = {
-  width: 720,
-  height: 1280,
-  facingMode: { exact: "environment" }
+const INITIAL_CONSTRAINTS = {
+  width: { min: 320, ideal: 720, max: 1280 },
+  height: { min: 240, ideal: 1280, max: 1920 },
+  facingMode: "environment"
+};
+
+const FALLBACK_CONSTRAINTS = {
+  width: { min: 320, ideal: 720, max: 1280 },
+  height: { min: 240, ideal: 1280, max: 1920 },
+  facingMode: "user"
 };
 
 const FILTERS = [
@@ -32,9 +38,68 @@ export function Camera() {
     setError(null);
   };
 
-  const handleUserMediaError = () => {
+  const [videoConstraints, setVideoConstraints] = useState(INITIAL_CONSTRAINTS);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // カメラデバイスの列挙と初期化
+  useEffect(() => {
+    const initializeCamera = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        console.log('Available video devices:', videoDevices);
+
+        if (videoDevices.length === 0) {
+          setError('カメラが見つかりませんでした。デバイスにカメラが接続されているか確認してください。');
+          setIsLoading(false);
+          return;
+        }
+
+        // デフォルトでバックカメラを試す
+        setVideoConstraints(INITIAL_CONSTRAINTS);
+      } catch (err) {
+        console.error('Failed to enumerate devices:', err);
+        setError('カメラの初期化に失敗しました。ブラウザの設定を確認してください。');
+        setIsLoading(false);
+      }
+    };
+
+    initializeCamera();
+  }, []);
+
+  const handleUserMediaError = (error: string | DOMException) => {
+    console.error('Camera error:', error);
+    
+    if (retryCount < 2) {
+      setRetryCount(prev => prev + 1);
+      if (retryCount === 0) {
+        // 最初のリトライ: フロントカメラを試す
+        console.log('Trying front camera...');
+        setVideoConstraints(FALLBACK_CONSTRAINTS);
+      } else {
+        // 2回目のリトライ: 制約を最小限にする
+        console.log('Trying minimal constraints...');
+        setVideoConstraints({
+          width: { min: 320, ideal: 640, max: 1280 },
+          height: { min: 240, ideal: 480, max: 720 },
+          facingMode: "user"
+        });
+      }
+      return;
+    }
+
     setIsLoading(false);
-    setError('カメラへのアクセスが拒否されました。設定を確認してください。');
+    if (error === 'Permission denied' || (error instanceof DOMException && error.name === 'NotAllowedError')) {
+      setError('カメラへのアクセスが拒否されました。ブラウザの設定でカメラへのアクセスを許可してください。');
+    } else if (error === 'Requested device not found' || (error instanceof DOMException && error.name === 'NotFoundError')) {
+      setError('カメラが見つかりませんでした。デバイスにカメラが接続されているか確認してください。');
+    } else if (error instanceof DOMException && error.name === 'NotReadableError') {
+      setError('カメラにアクセスできません。他のアプリがカメラを使用している可能性があります。');
+    } else if (error instanceof DOMException && error.name === 'OverconstrainedError') {
+      setError('お使いのカメラではサポートされていない設定です。');
+    } else {
+      setError(`カメラの起動に失敗しました: ${error}`);
+    }
   };
 
   // Connect Webcam video element to our ref
@@ -134,7 +199,7 @@ export function Camera() {
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
-              videoConstraints={CAPTURE_OPTIONS}
+              videoConstraints={videoConstraints}
               className="absolute inset-0 w-full h-full object-cover"
               onUserMedia={handleUserMedia}
               onUserMediaError={handleUserMediaError}
