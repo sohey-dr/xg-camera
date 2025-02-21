@@ -2,128 +2,67 @@
 
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Camera } from "react-camera-pro";
+import html2canvas from "html2canvas";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDownload, faRedo, faShare } from "@fortawesome/free-solid-svg-icons";
 
 export function CameraComponent() {
   const cameraRef = useRef<any>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const logoRef = useRef<HTMLImageElement>(new Image());
-  const memberRef = useRef<HTMLImageElement>(new Image());
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    // プリロードキャンバスの初期化
-    canvasRef.current = document.createElement("canvas");
-
-    // ロゴと画像のプリロード
-    logoRef.current.src = "/images/live_logo.png";
-    memberRef.current.src = "/images/live_member.png";
-
-    // Camera will automatically initialize
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  const capture = useCallback(() => {
+  const capture = useCallback(async () => {
     const camera = cameraRef.current;
-    const overlay = overlayRef.current;
-    if (!camera || !overlay) return;
+    const container = captureContainerRef.current;
+    if (!camera || !container) return;
 
-    // 撮影時に一時的にオーバーレイを非表示
-    setIsCapturing(true);
+    try {
+      // setIsCapturing(true);
 
-    // 少し待ってから撮影（オーバーレイが非表示になるのを待つ）
-    setTimeout(() => {
-      // キャプチャ画像を取得
       const imageSrc = camera.takePhoto();
       if (!imageSrc) {
-        setIsCapturing(false);
-        return;
+        throw new Error("Failed to capture photo");
       }
 
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (!canvas || !ctx) {
-        setIsCapturing(false);
-        return;
-      }
+      setCapturedImage(imageSrc);
 
-      const captureImg = new Image();
-      captureImg.onload = () => {
-        // デバイスのピクセル比を考慮してキャンバスサイズを設定
-        const pixelRatio = window.devicePixelRatio || 1;
-        canvas.width = captureImg.width * pixelRatio;
-        canvas.height = captureImg.height * pixelRatio;
-        
-        // キャンバスのスケーリングとスムージングを設定
-        ctx.scale(pixelRatio, pixelRatio);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-        // キャプチャ画像を描画（整数座標で最適化）
-        ctx.drawImage(
-          captureImg,
-          0, 0,
-          Math.floor(captureImg.width),
-          Math.floor(captureImg.height)
-        );
+      // html2canvasでキャプチャ
+      const canvas = await html2canvas(container, {
+        useCORS: true,
+        scale: window.devicePixelRatio || 1,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: null,
+      });
 
-        // オーバーレイ画像を描画（高解像度対応）
-        ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = Math.floor(20 * pixelRatio);
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+      // 最高品質で保存
+      const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+      setImgSrc(dataUrl);
 
-        // メンバー画像を描画（整数座標で最適化）
-        const memberWidth = Math.floor(captureImg.width * 0.8); // プレビューと同じ80%
-        const memberHeight = Math.floor((memberWidth / memberRef.current.width) * memberRef.current.height);
-        const memberX = Math.floor((captureImg.width - memberWidth) / 2);
-        const memberY = Math.floor(captureImg.height - memberHeight - (captureImg.height * 0.2)); // 下から20%の位置
-
-        // メンバー画像を一度だけ描画（座標を整数に）
-        ctx.drawImage(
-          memberRef.current,
-          0, 0,
-          Math.floor(memberRef.current.width),
-          Math.floor(memberRef.current.height),
-          memberX, memberY,
-          memberWidth, memberHeight
-        );
-
-        // ロゴ画像を描画（整数座標で最適化）
-        const logoWidth = Math.floor(captureImg.width * 0.6); // プレビューと同じ60%
-        const logoHeight = Math.floor((logoWidth / logoRef.current.width) * logoRef.current.height);
-        const logoX = Math.floor((captureImg.width - logoWidth) / 2);
-        const logoY = Math.floor(captureImg.height - logoHeight - (captureImg.height * 0.05)); // 下から5%の位置
-
-        // ロゴ画像を一度だけ描画（座標を整数に）
-        ctx.drawImage(
-          logoRef.current,
-          0, 0,
-          Math.floor(logoRef.current.width),
-          Math.floor(logoRef.current.height),
-          logoX, logoY,
-          logoWidth, logoHeight
-        );
-
-        ctx.restore();
-
-        // 最高品質で保存
-        setImgSrc(canvas.toDataURL("image/png", 1.0));
-        setIsCapturing(false);
-      };
-      captureImg.src = imageSrc;
-    }, 100);
+    } catch (err) {
+      console.error("Capture error:", err);
+      setError("写真の撮影に失敗しました");
+    } finally {
+      setCapturedImage(null);
+    }
   }, []);
 
   const retake = () => {
     setImgSrc(null);
+    setError(null);
   };
 
   const download = () => {
@@ -191,9 +130,8 @@ export function CameraComponent() {
                 }}
               />
             </div>
-            <div 
-              ref={overlayRef}
-              className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100 ${isCapturing ? 'opacity-0' : 'opacity-100'}`}
+            <div
+              className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
             >
               <img
                 src="/images/live_member.png"
@@ -214,6 +152,44 @@ export function CameraComponent() {
               aria-label="Take photo"
             />
           </div>
+          {/* キャプチャ用のコンテナ */}
+          <div
+            ref={captureContainerRef}
+            className="fixed left-0 top-0 w-screen h-screen pointer-events-none"
+            style={{
+              visibility: capturedImage ? "visible" : "hidden",
+              position: "fixed",
+              zIndex: -1,
+            }}
+          >
+            <div className="relative w-full h-full">
+              {capturedImage && (
+                <>
+                  <img
+                    src={capturedImage}
+                    alt="Capture"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
+                  >
+                    <img
+                      src="/images/live_member.png"
+                      alt="Live member"
+                      className="w-4/5 mb-4"
+                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+                    />
+                    <img
+                      src="/images/live_logo.png"
+                      alt="Live logo"
+                      className="w-3/5 mb-8"
+                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </>
       ) : (
         <>
@@ -224,25 +200,28 @@ export function CameraComponent() {
               className="w-full h-full object-contain"
             />
           </div>
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-6">
             <button
               onClick={retake}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg text-lg"
+              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
             >
-              撮り直し
+              <FontAwesomeIcon icon={faRedo} className="text-2xl mb-1" />
+              <span className="text-sm">撮り直し</span>
             </button>
             <button
               onClick={download}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg text-lg"
+              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
             >
-              保存
+              <FontAwesomeIcon icon={faDownload} className="text-2xl mb-1" />
+              <span className="text-sm">保存</span>
             </button>
             {"share" in navigator && (
               <button
                 onClick={share}
-                className="px-6 py-3 bg-green-500 text-white rounded-lg text-lg"
+                className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
               >
-                共有
+                <FontAwesomeIcon icon={faShare} className="text-2xl mb-1" />
+                <span className="text-sm">シェア</span>
               </button>
             )}
           </div>
