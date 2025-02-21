@@ -170,30 +170,31 @@ export function CameraComponent() {
               alt="Captured photo"
               className="w-full h-full object-cover"
             />
-              <div className="fixed inset-0 flex items-center justify-center">
-                <div className="mt-48">
-              <div className="bg-white rounded-lg shadow-xl mt-96 p-2">
-                <div className="flex justify-center gap-6">
-                  <FontAwesomeIcon
-                    className="text-black"
-                    icon={faRedo}
-                    onClick={retake}
-                  />
-                  <FontAwesomeIcon
-                    className="text-black"
-                    onClick={download}
-                    icon={faDownload}
-                  />
-                  {"share" in navigator && (
+            <div className="fixed inset-0 flex items-center justify-center">
+              <div className="mt-48">
+                <div className="bg-white rounded-lg shadow-xl mt-96 p-2">
+                  <div className="flex justify-center gap-6">
                     <FontAwesomeIcon
                       className="text-black"
-                      onClick={share}
-                      icon={faShare}
+                      icon={faRedo}
+                      onClick={retake}
                     />
-                  )}
+                    {"share" in navigator && (
+                      <FontAwesomeIcon
+                        className="text-black"
+                        onClick={share}
+                        icon={faDownload}
+                      />
+                    ) || (
+                      <FontAwesomeIcon
+                        className="text-black"
+                        onClick={download}
+                        icon={faDownload}
+                      />
+                        )}
+                  </div>
                 </div>
-                  </div>
-                  </div>
+              </div>
             </div>
           </div>
         </>
