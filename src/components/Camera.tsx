@@ -2,101 +2,67 @@
 
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Camera } from "react-camera-pro";
-
-const MEMBERS = [
-  { id: "jurin", name: "JURIN", image: "/images/member/jurin.png" },
-  { id: "chisa", name: "CHISA", image: "/images/member/chisa.png" },
-  { id: "harvey", name: "HARVEY", image: "/images/member/harvey.png" },
-  { id: "hinata", name: "HINATA", image: "/images/member/hinata.png" },
-  { id: "juria", name: "JURIA", image: "/images/member/juria.png" },
-  { id: "maya", name: "MAYA", image: "/images/member/maya.png" },
-  { id: "cocona", name: "COCONA", image: "/images/member/cocona.png" },
-];
+import html2canvas from "html2canvas";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDownload, faRedo, faShare } from "@fortawesome/free-solid-svg-icons";
 
 export function CameraComponent() {
   const cameraRef = useRef<any>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const memberImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
-  const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    // プリロードキャンバスの初期化
-    canvasRef.current = document.createElement("canvas");
-
-    // メンバー画像のプリロード
-    MEMBERS.forEach((member) => {
-      const img = new Image();
-      img.src = member.image;
-      img.onload = () => {
-        memberImagesRef.current.set(member.id, img);
-      };
-    });
-
-    // Camera will automatically initialize
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  const capture = useCallback(() => {
+  const capture = useCallback(async () => {
     const camera = cameraRef.current;
-    if (!camera) return;
+    const container = captureContainerRef.current;
+    if (!camera || !container) return;
 
-    // キャプチャ画像を取得
-    const imageSrc = camera.takePhoto();
-    if (!imageSrc) return;
+    try {
+      // setIsCapturing(true);
 
-    // メンバー画像を合成
-    if (selectedMember) {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (!canvas || !ctx) return;
+      const imageSrc = camera.takePhoto();
+      if (!imageSrc) {
+        throw new Error("Failed to capture photo");
+      }
 
-      const captureImg = new Image();
-      captureImg.onload = () => {
-        // キャンバスのサイズを設定
-        canvas.width = captureImg.width;
-        canvas.height = captureImg.height;
+      setCapturedImage(imageSrc);
 
-        // キャプチャ画像を描画
-        ctx.drawImage(captureImg, 0, 0);
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-        // プリロード済みのメンバー画像を取得
-        const memberImg = memberImagesRef.current.get(selectedMember);
-        if (memberImg) {
-          // メンバー画像のアスペクト比を維持しながら配置（サイズを25%に）
-          const maxWidth = canvas.width * 0.25;
-          const maxHeight = canvas.height * 0.25;
-          const scale = Math.min(
-            maxWidth / memberImg.width,
-            maxHeight / memberImg.height
-          );
-          const memberWidth = memberImg.width * scale;
-          const memberHeight = memberImg.height * scale;
+      // html2canvasでキャプチャ
+      const canvas = await html2canvas(container, {
+        useCORS: true,
+        scale: window.devicePixelRatio || 1,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: null,
+      });
 
-          // 画像を右側中央に配置（プレビューと同じ位置）
-          const x = canvas.width - memberWidth - canvas.width * 0.05; // 右端から5%の位置
-          const y = (canvas.height - memberHeight) / 2; // 垂直方向の中央
+      // 最高品質で保存
+      const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+      setImgSrc(dataUrl);
 
-          // プリロード済みのメンバー画像を描画
-          ctx.drawImage(memberImg, x, y, memberWidth, memberHeight);
-        }
-
-        // 合成した画像を保存
-        setImgSrc(canvas.toDataURL("image/png"));
-      };
-      captureImg.src = imageSrc;
-    } else {
-      setImgSrc(imageSrc);
+    } catch (err) {
+      console.error("Capture error:", err);
+      setError("写真の撮影に失敗しました");
+    } finally {
+      setCapturedImage(null);
     }
-  }, [selectedMember]);
+  }, []);
 
   const retake = () => {
     setImgSrc(null);
+    setError(null);
   };
 
   const download = () => {
@@ -124,9 +90,9 @@ export function CameraComponent() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
+    <div className="flex flex-col items-center w-full h-full relative">
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 z-50 rounded-lg">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
           <div className="text-white text-center px-4">
             <p>カメラを起動中...</p>
@@ -135,7 +101,7 @@ export function CameraComponent() {
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="text-white text-center px-4">
             <p className="mb-4">{error}</p>
             <button
@@ -149,15 +115,13 @@ export function CameraComponent() {
       )}
       {!imgSrc ? (
         <>
-          <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden">
-            <div
-              style={{ width: "100%", height: "100%", position: "relative" }}
-            >
+          <div className="relative w-full h-full bg-black overflow-hidden">
+            <div className="absolute inset-0">
               <Camera
                 ref={cameraRef}
                 numberOfCamerasCallback={(i: number) => {}}
                 facingMode="environment"
-                aspectRatio={9 / 16}
+                aspectRatio="cover"
                 errorMessages={{
                   noCameraAccessible: "カメラにアクセスできません",
                   permissionDenied: "カメラへのアクセスが拒否されました",
@@ -166,76 +130,98 @@ export function CameraComponent() {
                 }}
               />
             </div>
-            {selectedMember && (
-              <div className="absolute right-[5%] top-1/2 -translate-y-1/2 w-1/4 flex items-center justify-center">
-                <img
-                  src={MEMBERS.find((m) => m.id === selectedMember)?.image}
-                  alt="Selected member"
-                  className="max-w-full max-h-full object-contain"
-                  style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
-                />
-              </div>
-            )}
+            <div
+              className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
+            >
+              <img
+                src="/images/live_member.png"
+                alt="Live member"
+                className="w-4/5 mb-4"
+                style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+              />
+              <img
+                src="/images/live_logo.png"
+                alt="Live logo"
+                className="w-3/5 mb-8"
+                style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+              />
+            </div>
             <button
               onClick={capture}
               className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-800 shadow-lg"
               aria-label="Take photo"
             />
           </div>
-          <div className="w-full px-4">
-            <div className="grid grid-cols-4 gap-2">
-              {MEMBERS.map((member) => (
-                <button
-                  key={member.id}
-                  onClick={() =>
-                    setSelectedMember(
-                      member.id === selectedMember ? null : member.id
-                    )
-                  }
-                  className={`p-1 rounded-lg ${
-                    member.id === selectedMember
-                      ? "bg-blue-500 ring-2 ring-blue-300"
-                      : "bg-gray-200"
-                  }`}
-                >
+          {/* キャプチャ用のコンテナ */}
+          <div
+            ref={captureContainerRef}
+            className="fixed left-0 top-0 w-screen h-screen pointer-events-none"
+            style={{
+              visibility: capturedImage ? "visible" : "hidden",
+              position: "fixed",
+              zIndex: -1,
+            }}
+          >
+            <div className="relative w-full h-full">
+              {capturedImage && (
+                <>
                   <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full aspect-square object-cover rounded"
+                    src={capturedImage}
+                    alt="Capture"
+                    className="w-full h-full object-cover"
                   />
-                </button>
-              ))}
+                  <div
+                    className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-20 transition-opacity duration-100`}
+                  >
+                    <img
+                      src="/images/live_member.png"
+                      alt="Live member"
+                      className="w-4/5 mb-4"
+                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+                    />
+                    <img
+                      src="/images/live_logo.png"
+                      alt="Live logo"
+                      className="w-3/5 mb-8"
+                      style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </>
       ) : (
         <>
-          <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden">
+          <div className="relative w-full h-full bg-black overflow-hidden">
             <img
               src={imgSrc}
               alt="Captured photo"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
-          <div className="flex gap-4">
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-6">
             <button
               onClick={retake}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg"
+              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
             >
-              撮り直し
+              <FontAwesomeIcon icon={faRedo} className="text-2xl mb-1" />
+              <span className="text-sm">撮り直し</span>
             </button>
             <button
               onClick={download}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+              className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
             >
-              保存
+              <FontAwesomeIcon icon={faDownload} className="text-2xl mb-1" />
+              <span className="text-sm">保存</span>
             </button>
             {"share" in navigator && (
               <button
                 onClick={share}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg"
+                className="flex flex-col items-center px-6 py-3 rounded-lg bg-gray-800 text-white"
               >
-                共有
+                <FontAwesomeIcon icon={faShare} className="text-2xl mb-1" />
+                <span className="text-sm">シェア</span>
               </button>
             )}
           </div>
