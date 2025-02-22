@@ -26,7 +26,7 @@ export default function Home() {
             <div>
               <h2 className="text-xl font-semibold text-white">カメラ</h2>
               <p className="text-white/80 text-sm">
-                XGメンバーと一緒に写真を撮ろう
+                XGメンバーと一緒に写真を撮ろう📸
               </p>
             </div>
           </Link>
@@ -44,7 +44,7 @@ export default function Home() {
             <div>
               <h2 className="text-xl font-semibold text-white">AR体験</h2>
               <p className="text-white/80 text-sm">
-                ARでHOWLの世界を体験しよう
+                ARでHOWLの世界を体験しよう🐺
               </p>
             </div>
           </Link>
