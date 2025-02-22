@@ -29,7 +29,7 @@ export function ARQuickLook() {
       >
         <div className="text-white text-center">
           <h2 className="text-xl font-semibold mb-2">AR体験を開始</h2>
-          <p className="text-sm opacity-80">タップしてARモデルを表示</p>
+          <p className="text-sm opacity-80">タップして🐺を出現させる</p>
         </div>
       </a>
     </div>
